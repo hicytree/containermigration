@@ -1,0 +1,22 @@
+{
+  "name": "container-migration",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hicytree/containermigration.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hicytree/containermigration/issues"
+  },
+  "homepage": "https://github.com/hicytree/containermigration#readme",
+  "devDependencies": {
+    "express": "^4.19.2"
+  }
+}

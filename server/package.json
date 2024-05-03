@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/hicytree/containermigration#readme",
   "devDependencies": {
+    "cors": "^2.8.5",
     "express": "^4.19.2"
   }
 }

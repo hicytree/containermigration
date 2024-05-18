@@ -45,6 +45,10 @@ void get_memory_maps(pid_t pid, FILE *out_fp) {
             // Check if the memory region is readable
             if (strchr(perms, 'r')) {
                 read_memory(pid, start, end, out_fp);
+                printf("Dumped %lx-%lx\n", start, end);
+            }else {
+                // Skip this memory region
+                printf("Skipping %lx-%lx\n", start, end);
             }
         }
     }

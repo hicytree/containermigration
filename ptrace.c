@@ -49,7 +49,9 @@ void get_memory_maps(pid_t pid, FILE *out_fp) {
             }else {
                 // Skip this memory region
                 printf("Skipping %lx-%lx\n", start, end);
-            }
+		// print what the memory region is
+	    }
+            printf("%s", line);
         }
     }
     fclose(maps_fp);

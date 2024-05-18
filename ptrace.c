@@ -52,13 +52,13 @@ void get_memory_maps(pid_t pid, FILE *out_fp) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <pid> <output_file>\n", argv[0]);
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <pid>\n", argv[0]);
         return 1;
     }
 
     pid_t target_pid = atoi(argv[1]);
-    const char *output_file = argv[2];
+    const char *output_file = "memory_dump_ptrace.bin";
 
     FILE *out_fp = fopen(output_file, "wb");
     if (!out_fp) {

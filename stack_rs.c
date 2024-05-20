@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Read the contents of the dump file into memory
+    // Read the contents of the dump file into memory (dump_data)
     if (fread(dump_data, 1, dump_size, input) != dump_size) {
         perror("fread");
         fclose(input);
@@ -79,6 +79,7 @@ int main(int argc, char *argv[]) {
     }
 
     int status;
+    // 
     waitpid(pid, &status, 0);
 
     long stack_start = find_stack_address(pid);

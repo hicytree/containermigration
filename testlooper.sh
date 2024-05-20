@@ -9,7 +9,7 @@ while [ 1 ]; do
 
     echo Test $COUNTER
 
-    sleep 1
+    sleep 10
 
     let COUNTER=COUNTER+1 
     

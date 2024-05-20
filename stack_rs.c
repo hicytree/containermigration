@@ -50,6 +50,7 @@ int main(int argc, char *argv[]) {
     // Get the size of the dump file
     fseek(input, 0, SEEK_END);
     size_t dump_size = ftell(input);
+    fprintf(stderr, "Dump size: %ld\n", dump_size);
     rewind(input);
 
     // Allocate memory to hold the dump contents

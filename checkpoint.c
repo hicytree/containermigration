@@ -42,7 +42,8 @@ int main(int argc, char *argv[]) {
         
         // If successfully read from the map, read from the virtual memory addresses found
         if (ret == 7) {
-            printf("start_addr: %lx - end_addr: %lx\n", start_addr, end_addr);
+            int data_size = end_addr - start_addr;
+            char buffer[data_size];
             if (flags[0] == 'r') {
                 FILE* fd = fopen("memory_dump.bin", "ab");
                 if (fd == NULL) {
@@ -50,8 +51,6 @@ int main(int argc, char *argv[]) {
                     return 1;
                 }
 
-                int data_size = end_addr - start_addr;
-                char buffer[data_size];
                 struct iovec local_iov = {
                     .iov_base = buffer,
                     .iov_len = data_size
@@ -66,19 +65,39 @@ int main(int argc, char *argv[]) {
                 if (bytes_read == -1) {
                     continue;
                 }
-
-                // Write the data to the binary file
-                ssize_t bytes_written = fwrite(buffer, sizeof(buffer), 1, fd);
-                if (bytes_written == -1) {
-                    perror("Error writing to binary file");
-                    fclose(fd);
-                    return 1;
-                }
             }
             else {
                 //read using ptrace rlly quickly?
-                printf("read memory using ptrace\n");
+                if (ptrace(PTRACE_ATTACH, pid, NULL, NULL) == -1) {
+                    printf("Failed: Error attaching to process\n");
+                }
+                waitpid(pid, NULL, 0);
+                
+                int failed = 0;
+                for (size_t offset = 0; offset < data_size; offset += sizeof(long)) {
+                    long data = ptrace(PTRACE_PEEKDATA, pid, start_addr + offset, NULL);
+                    if (data == -1) {
+                        failed = 1;
+                        break;
+                    }
+
+                    *(long*)(buffer + offset) = data;
+                }
+
+                if (ptrace(PTRACE_DETACH, pid, NULL, NULL) == -1) {
+                    continue;
+                }
+
+                if (failed) continue;
             }
+            // Write the data to the binary file
+            ssize_t bytes_written = fwrite(buffer, sizeof(buffer), 1, fd);
+            if (bytes_written == -1) {
+                printf("Failed: Error writing to binary file\n");
+                fclose(fd);
+                return 1;
+            }
+            printf("start_addr: %lx - end_addr: %lx\n", start_addr, end_addr);
             // Add map data to some header file?
         }
         else if (ret == EOF) {

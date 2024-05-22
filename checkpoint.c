@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <sys/uio.h>
 #include <stdint.h>
+#include <errno.h>
+#include <sys/user.h>
 
 int main(int argc, char *argv[]) {
     // Received PID from command argument
@@ -18,6 +20,11 @@ int main(int argc, char *argv[]) {
         pid = atoi(argv[1]);
     }
 
+    if (ptrace(PTRACE_ATTACH, pid, NULL, NULL) == -1) {
+        printf("Failed: Error attaching to process\n");
+    }
+    waitpid(pid, NULL, 0);
+            
     // Set up reading virtual memory map
     char maps_path[256];
     snprintf(maps_path, sizeof(maps_path), "/proc/%d/maps", pid);
@@ -28,7 +35,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     //Clear memory dump file
-    FILE* fd = fopen("memory_dump.bin", "w");
+    FILE* fd_m = fopen("memory_dump.bin", "w");
+    FILE* fd_r = fopen("register_dump.bin", "w");
 
     // Read data from virtual memory map
     char buf[512];
@@ -42,62 +50,33 @@ int main(int argc, char *argv[]) {
         
         // If successfully read from the map, read from the virtual memory addresses found
         if (ret == 7) {
+            printf("start_addr: %lx - end_addr: %lx\n", start_addr, end_addr);
             int data_size = end_addr - start_addr;
             char buffer[data_size];
-            if (flags[0] == 'r') {
-                FILE* fd = fopen("memory_dump.bin", "ab");
-                if (fd == NULL) {
-                    perror("Error opening binary file");
-                    return 1;
+
+            int failed = 0;
+            for (size_t offset = 0; offset < data_size; offset += sizeof(long)) {
+                errno = 0;
+                long data = ptrace(PTRACE_PEEKDATA, pid, start_addr + offset, NULL);
+                if (data == -1 && errno != 0) {
+                    perror("ptrace PEEKDATA");
+                    failed = 1;
+                    break;
                 }
 
-                struct iovec local_iov = {
-                    .iov_base = buffer,
-                    .iov_len = data_size
-                };
-
-                struct iovec remote_iov = {
-                    .iov_base = (void *)start_addr,
-                    .iov_len = data_size
-                };
-                    
-                ssize_t bytes_read = process_vm_readv(pid, &local_iov, 1, &remote_iov, 1, 0);
-                if (bytes_read == -1) {
-                    continue;
-                }
+                *(long*)(buffer + offset) = data;
             }
-            else {
-                //read using ptrace rlly quickly?
-                if (ptrace(PTRACE_ATTACH, pid, NULL, NULL) == -1) {
-                    printf("Failed: Error attaching to process\n");
-                }
-                waitpid(pid, NULL, 0);
-                
-                int failed = 0;
-                for (size_t offset = 0; offset < data_size; offset += sizeof(long)) {
-                    long data = ptrace(PTRACE_PEEKDATA, pid, start_addr + offset, NULL);
-                    if (data == -1) {
-                        failed = 1;
-                        break;
-                    }
 
-                    *(long*)(buffer + offset) = data;
-                }
+            if (failed) continue;
 
-                if (ptrace(PTRACE_DETACH, pid, NULL, NULL) == -1) {
-                    continue;
-                }
-
-                if (failed) continue;
-            }
             // Write the data to the binary file
-            ssize_t bytes_written = fwrite(buffer, sizeof(buffer), 1, fd);
+            ssize_t bytes_written = fwrite(buffer, sizeof(buffer), 1, fd_m);
             if (bytes_written == -1) {
                 printf("Failed: Error writing to binary file\n");
-                fclose(fd);
+                fclose(fd_m);
                 return 1;
             }
-            printf("start_addr: %lx - end_addr: %lx\n", start_addr, end_addr);
+            
             // Add map data to some header file?
         }
         else if (ret == EOF) {
@@ -107,10 +86,21 @@ int main(int argc, char *argv[]) {
             printf("Failed: Parsing error.");
         }
     }
+    fclose(fd_m);
     fclose(maps_file);
 
     // Read registers using ptrace?
     printf("read registers using ptrace\n");
+    struct user_regs_struct regs;
+    if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
+        perror("ptrace getregs");
+        exit(EXIT_FAILURE);
+    }
+
+    fwrite(&regs, sizeof(regs), 1, fd_r);
+    fclose(fd_r);
+
+    ptrace(PTRACE_DETACH, pid, NULL, NULL);
 
     return 0;
 }

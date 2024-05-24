@@ -9,6 +9,37 @@
 #include <errno.h>
 #include <sys/user.h>
 
+void print_regs(struct user_regs_struct *regs) {
+    printf("Registers:\n");
+    printf("  r15:      0x%llx\n", regs->r15);
+    printf("  r14:      0x%llx\n", regs->r14);
+    printf("  r13:      0x%llx\n", regs->r13);
+    printf("  r12:      0x%llx\n", regs->r12);
+    printf("  rbp:      0x%llx\n", regs->rbp);
+    printf("  rbx:      0x%llx\n", regs->rbx);
+    printf("  r11:      0x%llx\n", regs->r11);
+    printf("  r10:      0x%llx\n", regs->r10);
+    printf("  r9:       0x%llx\n", regs->r9);
+    printf("  r8:       0x%llx\n", regs->r8);
+    printf("  rax:      0x%llx\n", regs->rax);
+    printf("  rcx:      0x%llx\n", regs->rcx);
+    printf("  rdx:      0x%llx\n", regs->rdx);
+    printf("  rsi:      0x%llx\n", regs->rsi);
+    printf("  rdi:      0x%llx\n", regs->rdi);
+    printf("  orig_rax: 0x%llx\n", regs->orig_rax);
+    printf("  rip:      0x%llx\n", regs->rip);
+    printf("  cs:       0x%llx\n", regs->cs);
+    printf("  eflags:   0x%llx\n", regs->eflags);
+    printf("  rsp:      0x%llx\n", regs->rsp);
+    printf("  ss:       0x%llx\n", regs->ss);
+    printf("  fs_base:  0x%llx\n", regs->fs_base);
+    printf("  gs_base:  0x%llx\n", regs->gs_base);
+    printf("  ds:       0x%llx\n", regs->ds);
+    printf("  es:       0x%llx\n", regs->es);
+    printf("  fs:       0x%llx\n", regs->fs);
+    printf("  gs:       0x%llx\n", regs->gs);
+}
+
 int main(int argc, char *argv[]) {
     // Received PID from command argument
     pid_t pid = -1;
@@ -34,9 +65,11 @@ int main(int argc, char *argv[]) {
         perror("Error opening maps file");
         return 1;
     }
+    
     //Clear memory dump file
     FILE* fd_m = fopen("memory_dump.bin", "w");
     FILE* fd_r = fopen("register_dump.bin", "w");
+    FILE* fd_l = fopen("layout.bin", "w");
 
     // Read data from virtual memory map
     char buf[512];
@@ -47,6 +80,13 @@ int main(int argc, char *argv[]) {
         unsigned long ino;
         char flags[4];
         int ret = sscanf(buf, "%lx-%lx %4c %x %x:%x %lu ", &start_addr, &end_addr, flags, &pgoff, &major, &minor, &ino);
+
+        ssize_t bytes_written = fwrite(buf, sizeof(buf), 1, fd_l);
+        if (bytes_written == -1) {
+            printf("Failed: Error writing to binary file\n");
+            fclose(fd_l);
+            return 1;
+        }
         
         // If successfully read from the map, read from the virtual memory addresses found
         if (ret == 7) {
@@ -96,6 +136,8 @@ int main(int argc, char *argv[]) {
         perror("ptrace getregs");
         exit(EXIT_FAILURE);
     }
+
+    print_regs(&regs);
 
     fwrite(&regs, sizeof(regs), 1, fd_r);
     fclose(fd_r);

@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "typeinfo": "c",
+        "uio.h": "c"
+    }
+}

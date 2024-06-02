@@ -15,6 +15,7 @@ typedef struct
 {
     uintptr_t start_addr, end_addr;
     int r, w, x, p;
+    
 } MemoryBlock;
 
 pid_t get_pid(int argc, char *argv[]) {
@@ -58,7 +59,7 @@ void store_memory(pid_t pid) {
         printf("start_addr: %lx - end_addr: %lx\n", start_addr, end_addr);
 
         // If successfully read from the map, read from the virtual memory addresses found
-        if (ret > 0) {    
+        if (ret > 0 && strstr(name, "[stack]")) {    
             int data_size = end_addr - start_addr;
             char *buffer = malloc(data_size);
 
@@ -106,9 +107,9 @@ void store_memory(pid_t pid) {
         else if (ret == EOF) {
             break;
         }
-        else {
-            printf("Failed: Parsing error.\n");
-        }
+        // else {
+        //     printf("Failed: Parsing error.\n");
+        // }
     }
     fclose(maps_file);
     fclose(fd_m);
@@ -132,6 +133,7 @@ void store_register(pid_t pid) {
 
 int main(int argc, char *argv[]) {
     // Received PID from command argument
+
     pid_t pid = get_pid(argc, argv);
     if (pid == -1) {
         return EXIT_FAILURE;
@@ -162,5 +164,6 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    kill(pid, SIGTERM);
     return EXIT_SUCCESS;
 }
